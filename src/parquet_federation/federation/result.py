@@ -19,7 +19,7 @@ def serialize_result(
             data = df.to_dict(orient="records")
             return data, len(df)
         case OutputFormat.PARQUET:
-            arrow_table = rel.fetch_arrow_table()
+            arrow_table = rel.to_arrow_table()
             buf = io.BytesIO()
             pq.write_table(arrow_table, buf)
             return buf.getvalue(), arrow_table.num_rows
