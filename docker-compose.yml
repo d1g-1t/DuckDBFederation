@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pf_postgres
+    environment:
+      POSTGRES_DB: federation_source
+      POSTGRES_USER: reader
+      POSTGRES_PASSWORD: reader_password
+    ports:
+      - "54329:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./scripts/seed_pg.sql:/docker-entrypoint-initdb.d/seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reader -d federation_source"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    container_name: pf_app
+    ports:
+      - "8421:8000"
+    env_file: .env
+    environment:
+      FEDERATION_PG_DSN: "host=postgres port=5432 dbname=federation_source user=reader password=reader_password"
+      DUCKDB_SPILL_DIR: /tmp/duckdb_spill
+      DUCKDB_MEMORY_LIMIT: 4GB
+      DUCKDB_THREADS: 4
+      DUCKDB_POOL_SIZE: 10
+    volumes:
+      - duckdb_spill:/tmp/duckdb_spill
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+volumes:
+  pg_data:
+  duckdb_spill:
